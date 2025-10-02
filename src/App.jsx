@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 const App = () => {
   const wakeLockRef = useRef(null);
   const [count, setCount] = useState(0);
+  const [activeTab, setActiveTab] = useState("wake"); // "wake" or "nonWake"
 
   // Auto wake lock
   const requestWakeLock = async () => {
@@ -19,22 +20,37 @@ const App = () => {
     }
   };
 
+  const releaseWakeLock = async () => {
+    if (wakeLockRef.current) {
+      await wakeLockRef.current.release();
+      wakeLockRef.current = null;
+      console.log("Wake Lock manually released");
+    }
+  };
+
+  // Request wake lock only when wake tab is active
   useEffect(() => {
-    requestWakeLock();
+    if (activeTab === "wake") {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") requestWakeLock();
+      if (document.visibilityState === "visible" && activeTab === "wake") {
+        requestWakeLock();
+      }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (wakeLockRef.current) wakeLockRef.current.release();
+      releaseWakeLock();
     };
-  }, []);
+  }, [activeTab]);
 
-  // Example: update count every second
+  // Counter
   useEffect(() => {
     const timer = setInterval(() => {
       setCount((prev) => prev + 1);
@@ -44,10 +60,36 @@ const App = () => {
 
   return (
     <div className="App">
-      <h1>Hello Vite + React!</h1>
-      <p>Screen wake lock is active automatically.</p>
-      <p>Counter: {count} {console.log("Render count:", count)}</p>
-      <p>{console.log("Component rendered at", new Date().toLocaleTimeString())}</p>
+      <h1>Wake Lock Demo</h1>
+
+      {/* Tabs */}
+      <div style={{ marginBottom: "20px" }}>
+        <button
+          onClick={() => setActiveTab("wake")}
+          style={{ fontWeight: activeTab === "wake" ? "bold" : "normal" }}
+        >
+          Wake Lock Tab
+        </button>
+        <button
+          onClick={() => setActiveTab("nonWake")}
+          style={{ fontWeight: activeTab === "nonWake" ? "bold" : "normal" }}
+        >
+          Non-Wake Tab
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === "wake" ? (
+        <div>
+          <p>Wake Lock is active on this tab.</p>
+          <p>Counter: {count} {console.log("Wake Tab Render:", count)}</p>
+        </div>
+      ) : (
+        <div>
+          <p>This tab does NOT keep the screen awake.</p>
+          <p>Counter: {count} {console.log("Non-Wake Tab Render:", count)}</p>
+        </div>
+      )}
     </div>
   );
 };
